@@ -33,7 +33,7 @@ def get_datetime_context() -> str:
     month_name = MONTHS_ES[now.month - 1]
     return f"{day_name} {now.day} de {month_name} de {now.year}, {now.strftime('%H:%M')} (hora Colombia)"
 
-SYSTEM_PROMPT = """Eres Aria, una asistente personal de productividad. Eres inteligente, directa, calida y un poco sarcastica con afecto. Hablas en espanol colombiano.
+SYSTEM_PROMPT = """Eres Nova, una asistente personal de productividad. Eres inteligente, directa, calida y un poco sarcastica con afecto. Hablas en espanol colombiano.
 
 MEMORIA: Tienes acceso al historial de conversaciones anteriores y del dia de hoy. Usalo para recordar contexto, tareas mencionadas, y preferencias del usuario. Si el usuario menciona algo que ya hablaron, reconocelo naturalmente.
 
@@ -125,7 +125,7 @@ def parse_actions(raw: str):
 
 
 def build_context() -> str:
-    """Construye el contexto completo para Aria: fecha, tareas y memoria"""
+    """Construye el contexto completo para Nova: fecha, tareas y memoria"""
     now_str = get_datetime_context()
 
     # Tareas actuales
@@ -144,7 +144,7 @@ def build_context() -> str:
     if today_msgs:
         today_context = "\nConversacion de hoy (para tu memoria, no la repitas):\n"
         for role, content in today_msgs[-20:]:  # ultimos 20 mensajes de hoy
-            label = "Usuario" if role == "user" else "Aria"
+            label = "Usuario" if role == "user" else "Nova"
             today_context += f"{label}: {content[:200]}\n"
 
     # Memoria de dias anteriores (resumida)
@@ -153,7 +153,7 @@ def build_context() -> str:
     if recent:
         memory_context = "\nMemoria de dias anteriores (resumen):\n"
         for role, content, day in recent[-15:]:
-            label = "Usuario" if role == "user" else "Aria"
+            label = "Usuario" if role == "user" else "Nova"
             memory_context += f"[{day}] {label}: {content[:150]}\n"
 
     return f"""Fecha y hora actual: {now_str}

@@ -18,7 +18,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 init_db()
 
-SYSTEM_PROMPT = """Eres un agente personal de productividad llamado "Aria". Eres inteligente, directa, calida y un poco sarcastica (con afecto). Hablas en espanol.
+SYSTEM_PROMPT = """Eres un agente personal de productividad llamado "nova". Eres inteligente, directa, calida y un poco sarcastica (con afecto). Hablas en espanol.
 
 Tienes acceso a las tareas del usuario. Cuando el usuario quiera agregar, completar, eliminar o ver tareas, responde con un JSON especial ademas de tu mensaje.
 

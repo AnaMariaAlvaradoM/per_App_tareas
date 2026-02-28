@@ -1,4 +1,4 @@
-# ✦ Aria — Agente web de tareas con IA
+# ✦ nova — Agente web de tareas con IA
 
 Interfaz web dark mode con IA conversacional (Gemini) para gestionar tareas.
 
@@ -18,7 +18,7 @@ Interfaz web dark mode con IA conversacional (Gemini) para gestionar tareas.
    - **Runtime:** Python 3.11
    - **Build Command:** `pip install -r requirements.txt`
    - **Start Command:** `uvicorn main:app --host 0.0.0.0 --port $PORT`
-4. En **Environment Variables** agrega:
+4. En **Environment Vnovables** agrega:
    - `GEMINI_API_KEY` = tu key de Google AI Studio
 5. Agrega el archivo `.python-version` con contenido `3.11.9`
 6. Deploy ✅
