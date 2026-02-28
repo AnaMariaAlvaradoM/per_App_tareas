@@ -1,6 +1,5 @@
 import os
 import psycopg2
-from psycopg2.extras import RealDictCursor
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
@@ -15,6 +14,14 @@ def init_db():
                     id SERIAL PRIMARY KEY,
                     name TEXT NOT NULL,
                     done BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS messages (
+                    id SERIAL PRIMARY KEY,
+                    role TEXT NOT NULL,
+                    content TEXT NOT NULL,
                     created_at TIMESTAMP DEFAULT NOW()
                 )
             """)
@@ -63,3 +70,32 @@ def get_progress():
             done = cur.fetchone()[0]
     pct = round((done / total * 100) if total > 0 else 0)
     return total, done, pct
+
+def save_message(role: str, content: str):
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("INSERT INTO messages (role, content) VALUES (%s, %s)", (role, content))
+        conn.commit()
+
+def get_today_messages():
+    """Trae todos los mensajes de hoy para contexto interno"""
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT role, content FROM messages
+                WHERE created_at::date = CURRENT_DATE
+                ORDER BY created_at ASC
+            """)
+            return cur.fetchall()
+
+def get_recent_messages(days=7):
+    """Trae resumen de los ultimos N dias para memoria de largo plazo"""
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT role, content, created_at::date as day FROM messages
+                WHERE created_at >= NOW() - INTERVAL '%s days'
+                AND created_at::date < CURRENT_DATE
+                ORDER BY created_at ASC
+            """, (days,))
+            return cur.fetchall()
