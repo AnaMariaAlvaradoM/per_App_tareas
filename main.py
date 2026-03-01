@@ -191,6 +191,32 @@ async def api_complete_task(task_id: int):
     }
 
 
+@app.post("/api/tasks/{task_id}/delete")
+async def api_delete_task(task_id: int):
+    delete_task(task_id)
+    tasks = get_tasks(done=None)
+    total, done_count, pct = get_progress()
+    return {"ok": True, "tasks": [{"id": t[0], "name": t[1], "done": bool(t[2])} for t in tasks], "progress": {"total": total, "done": done_count, "pct": pct}}
+
+
+@app.post("/api/tasks/clear-done")
+async def api_clear_done():
+    tasks = get_tasks(done=True)
+    for t in tasks:
+        delete_task(t[0])
+    all_tasks = get_tasks(done=None)
+    total, done_count, pct = get_progress()
+    return {"ok": True, "tasks": [{"id": t[0], "name": t[1], "done": bool(t[2])} for t in all_tasks], "progress": {"total": total, "done": done_count, "pct": pct}}
+
+
+@app.post("/api/tasks/clear-all")
+async def api_clear_all():
+    tasks = get_tasks(done=None)
+    for t in tasks:
+        delete_task(t[0])
+    return {"ok": True, "tasks": [], "progress": {"total": 0, "done": 0, "pct": 0}}
+
+
 @app.post("/api/chat")
 async def chat(request: Request):
     body = await request.json()
