@@ -405,19 +405,57 @@
     if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
       alert('Tu navegador no soporta voz. Usa Chrome.'); return;
     }
-    if (isRec) { recognition.stop(); return; }
+    if (isRec) {
+      recognition.stop(); return;
+    }
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SR();
-    recognition.lang = 'es-CO'; recognition.continuous = false; recognition.interimResults = false;
-    recognition.onstart = function(){ isRec = true; document.getElementById('micBtn').classList.add('rec'); };
-    recognition.onresult = function(e){
-      var t = e.results[0][0].transcript;
-      var inp = document.getElementById('msgInput');
-      inp.value = (inp.value ? inp.value + ' ' : '') + t;
-      inp.style.height = 'auto'; inp.style.height = Math.min(inp.scrollHeight, 110) + 'px';
+    recognition.lang = 'es-CO';
+    recognition.continuous = true;       // sigue escuchando hasta que el usuario para
+    recognition.interimResults = true;   // muestra texto mientras habla
+
+    var finalTranscript = '';
+    var inp = document.getElementById('msgInput');
+
+    recognition.onstart = function() {
+      isRec = true;
+      finalTranscript = '';
+      document.getElementById('micBtn').classList.add('rec');
     };
-    recognition.onend = function(){ isRec = false; document.getElementById('micBtn').classList.remove('rec'); };
-    recognition.onerror = function(){ isRec = false; document.getElementById('micBtn').classList.remove('rec'); };
+
+    recognition.onresult = function(e) {
+      var interim = '';
+      for (var i = e.resultIndex; i < e.results.length; i++) {
+        var t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) {
+          finalTranscript += t + ' ';
+        } else {
+          interim += t;
+        }
+      }
+      // Muestra texto final + interim en el input
+      inp.value = finalTranscript + interim;
+      inp.style.height = 'auto';
+      inp.style.height = Math.min(inp.scrollHeight, 110) + 'px';
+    };
+
+    recognition.onend = function() {
+      isRec = false;
+      document.getElementById('micBtn').classList.remove('rec');
+      // Asegura que quede el texto final limpio
+      inp.value = finalTranscript.trim();
+      inp.style.height = 'auto';
+      inp.style.height = Math.min(inp.scrollHeight, 110) + 'px';
+    };
+
+    recognition.onerror = function(e) {
+      isRec = false;
+      document.getElementById('micBtn').classList.remove('rec');
+      if (e.error !== 'aborted') {
+        console.warn('Mic error:', e.error);
+      }
+    };
+
     recognition.start();
   }
 
