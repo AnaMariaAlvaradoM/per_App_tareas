@@ -4,12 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nova</title>
-
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-</head>
-<body>
 <style>
-    :root {
+  :root {
     --bg: #0f0f11;
     --surface: #17171a;
     --surface2: #1f1f24;
@@ -157,29 +154,6 @@
   .task-row.done .t-name { text-decoration: line-through; color: var(--text-dim); }
 
   .no-tasks { padding: 20px 18px; font-size: 12px; color: var(--text-dim); line-height: 1.6; }
-
-  .task-row { position: relative; }
-  .del-btn {
-    opacity: 0; position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
-    width: 20px; height: 20px; border-radius: 5px; border: none;
-    background: transparent; color: var(--text-dim); cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: all .15s;
-  }
-  .task-row:hover .del-btn { opacity: 1; }
-  .del-btn:hover { background: #ef535020; color: #ef5350; }
-  .del-btn svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 2; }
-
-  .sidebar-footer {
-    padding: 10px 14px; border-top: 1px solid var(--border);
-    display: flex; gap: 6px; flex-shrink: 0;
-  }
-  .footer-btn {
-    flex: 1; padding: 7px 8px; border-radius: 8px; border: 1px solid var(--border);
-    background: var(--surface2); color: var(--text-dim); font-family: 'DM Sans', sans-serif;
-    font-size: 11px; cursor: pointer; transition: all .15s; text-align: center;
-  }
-  .footer-btn:hover { border-color: #ef5350; color: #ef5350; background: #ef535010; }
 
   /* ── MAIN ── */
   .main {
@@ -339,6 +313,9 @@
     .input-area { padding: 10px 14px 14px; }
   }
 </style>
+</head>
+<body>
+
 <div class="app">
 
   <!-- SIDEBAR -->
@@ -366,10 +343,6 @@
 
     <div class="task-list" id="taskList">
       <div class="no-tasks">Cuéntale a Nova qué tienes pendiente</div>
-    </div>
-    <div class="sidebar-footer">
-      <button class="footer-btn" onclick="clearDone()">Limpiar hechas</button>
-      <button class="footer-btn" onclick="clearAll()">Borrar todo</button>
     </div>
   </aside>
 
@@ -421,234 +394,173 @@
 </div>
 
 <script>
-// === NOVA ULTRA ROBUSTA - SIEMPRE FUNCIONA ===
-var hist = [], isLoading = false, tasks = [], STORAGE_KEY = 'nova_tasks_v2';
+  var hist = [], isLoading = false, isRec = false, recognition = null;
 
-function saveTasks() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-    console.log('✅ Tasks guardadas:', tasks.length);
-  } catch(e) { console.error('❌ Save error:', e); }
-}
+  var DAYS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  var MONTHS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var n = new Date();
+  document.getElementById('topDate').textContent = DAYS[n.getDay()] + ', ' + n.getDate() + ' de ' + MONTHS[n.getMonth()];
 
-function loadTasks() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      tasks = JSON.parse(stored).map(t => ({...t, id: t.id || Date.now() + Math.random()}));
-      console.log('✅ Tasks cargadas desde local:', tasks.length);
+  function toggleMic() {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+      alert('Tu navegador no soporta voz. Usa Chrome.'); return;
     }
-    updateUI();
-  } catch(e) {
-    console.error('❌ Load error, reset:', e);
-    tasks = []; saveTasks(); updateUI();
-  }
-}
-
-function updateUI() {
-  const pct = tasks.length ? Math.round((tasks.filter(t => t.done).length / tasks.length) * 100) : 0;
-  const done = tasks.filter(t => t.done).length;
-  const total = tasks.length;
-  
-  // Progress ring
-  const circ = 2 * Math.PI * 16;
-  document.getElementById('ringFill').style.strokeDasharray = circ;
-  document.getElementById('ringFill').style.strokeDashoffset = circ - (pct/100)*circ;
-  document.getElementById('ringNum').textContent = pct + '%';
-  document.getElementById('progCount').innerHTML = done + ' <span>/ ' + total + '</span>';
-
-  const el = document.getElementById('taskList');
-  if (!tasks.length) { 
-    el.innerHTML = '<div class="no-tasks">Sin tareas aún.</div>'; 
-    return; 
-  }
-  
-  const pending = tasks.filter(t => !t.done);
-  const dones = tasks.filter(t => t.done);
-  let h = '';
-  
-  if (pending.length) {
-    h += '<div class="section-label">Pendientes</div>';
-    pending.forEach(t => {
-      h += `<div class="task-row" onclick="toggleTask(${t.id})">
-        <div class="t-check">${t.done ? '<svg viewBox="0 0 10 8"><polyline points="1,4 4,7 9,1"/></svg>' : ''}</div>
-        <div class="t-name">${escapeHtml(t.name)}</div>
-        <button class="del-btn" onclick="event.stopPropagation(); delTask(${t.id})" title="Eliminar">
-          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button></div>`;
-    });
-  }
-  if (dones.length) {
-    h += '<div class="section-label" style="margin-top:6px">Hechas</div>';
-    dones.forEach(t => {
-      h += `<div class="task-row done">
-        <div class="t-check"><svg viewBox="0 0 10 8"><polyline points="1,4 4,7 9,1"/></svg></div>
-        <div class="t-name">${escapeHtml(t.name)}</div>
-        <button class="del-btn" onclick="event.stopPropagation(); delTask(${t.id})" title="Eliminar">
-          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button></div>`;
-    });
-  }
-  el.innerHTML = h;
-}
-
-function toggleTask(id) {
-  const task = tasks.find(t => t.id == id);
-  if (task) {
-    task.done = !task.done;
-    saveTasks();
-    updateUI();
-    addMsg('ai', task.done ? '✅ Tarea completada' : '↻ Tarea reabierta', null);
-    console.log('🔄 Task toggled:', id, task.done);
-  }
-}
-
-function delTask(id) {
-  tasks = tasks.filter(t => t.id != id);
-  saveTasks();
-  updateUI();
-  addMsg('ai', '🗑️ Tarea eliminada', null);
-  console.log('🗑️ Task deleted:', id);
-}
-
-function clearDone() {
-  tasks = tasks.filter(t => !t.done);
-  saveTasks();
-  updateUI();
-  addMsg('ai', 'Limpié las completadas.', null);
-}
-
-function clearAll() {
-  if (!confirm('¿Borrar TODO?')) return;
-  tasks = [];
-  saveTasks();
-  updateUI();
-  addMsg('ai', 'Todo borrado. ¡Lista nueva!', null);
-}
-
-// === CHAT (mantiene APIs pero con fallback local) ===
-const DAYS = ['domingo','lunes','miércoles','jueves','viernes','sábado'];
-const MONTHS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-document.getElementById('topDate').textContent = `${DAYS[new Date().getDay()]}, ${new Date().getDate()} de ${MONTHS[new Date().getMonth()]}`;
-
-async function sendMessage() {
-  if (isLoading) return;
-  const inp = document.getElementById('msgInput'), text = inp.value.trim();
-  if (!text) return;
-  
-  const w = document.getElementById('welcome'); if (w) w.remove();
-  inp.value = ''; inp.style.height = 'auto';
-  addMsg('user', text, null); hist.push({role:'user', content:text});
-  
-  showTyping(); isLoading = true; document.getElementById('sendBtn').disabled = true;
-  
-  try {
-    // Intenta API real
-    const r = await fetch('/api/chat', { 
-      method:'POST', 
-      headers:{'Content-Type':'application/json'}, 
-      body: JSON.stringify({ messages: hist }) 
-    });
-    const d = await r.json();
-    
-    // Extrae tareas de respuesta AI (parsea ACTION)
-    if (d.action_result && d.action_result.includes('agregada')) {
-      const newTaskName = text.match(/tarea[:\s]+(.+)/i)?.[1] || 'Nueva tarea';
-      tasks.push({id: Date.now(), name: newTaskName.trim(), done: false});
-      saveTasks();
+    if (isRec) {
+      recognition.stop(); return;
     }
-    
-    removeTyping();
-    addMsg('ai', d.message, d.action_result);
-    hist.push({role:'assistant', content: d.message});
-    
-  } catch(e) {
-    // FALLBACK LOCAL: Nova simple
-    console.warn('🌐 API falló, modo local');
-    removeTyping();
-    let response = '¡Listo! ';
-    
-    if (text.toLowerCase().includes('tarea') || text.includes('agregar')) {
-      const taskName = text.replace(/^(agrega?|crea?|nueva?\s+tarea?[:\s]*)/i, '').trim() || 'Tarea nueva';
-      tasks.unshift({id: Date.now(), name: taskName, done: false});
-      saveTasks();
-      response += `Agregué "${taskName}" ✅`;
-    } else if (text.toLowerCase().includes('complet') || text.includes('hecho')) {
-      const pending = tasks.find(t => !t.done);
-      if (pending) {
-        pending.done = true;
-        saveTasks();
-        response += `Marcada "${pending.name}" como hecha 🎉`;
-      } else response += 'No hay pendientes.';
-    } else if (text.toLowerCase().includes('lista') || text.includes('tareas')) {
-      const pending = tasks.filter(t => !t.done);
-      response += pending.length ? `Tienes ${pending.length} pendientes.` : '¡Estás al día! ✨';
-    } else {
-      response += 'Dime qué tarea agregar o qué completar 😊';
-    }
-    
-    addMsg('ai', response, null);
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SR();
+    recognition.lang = 'es-CO';
+    recognition.continuous = true;       // sigue escuchando hasta que el usuario para
+    recognition.interimResults = true;   // muestra texto mientras habla
+
+    var finalTranscript = '';
+    var inp = document.getElementById('msgInput');
+
+    recognition.onstart = function() {
+      isRec = true;
+      finalTranscript = '';
+      document.getElementById('micBtn').classList.add('rec');
+    };
+
+    recognition.onresult = function(e) {
+      var interim = '';
+      for (var i = e.resultIndex; i < e.results.length; i++) {
+        var t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) {
+          finalTranscript += t + ' ';
+        } else {
+          interim += t;
+        }
+      }
+      // Muestra texto final + interim en el input
+      inp.value = finalTranscript + interim;
+      inp.style.height = 'auto';
+      inp.style.height = Math.min(inp.scrollHeight, 110) + 'px';
+    };
+
+    recognition.onend = function() {
+      isRec = false;
+      document.getElementById('micBtn').classList.remove('rec');
+      // Asegura que quede el texto final limpio
+      inp.value = finalTranscript.trim();
+      inp.style.height = 'auto';
+      inp.style.height = Math.min(inp.scrollHeight, 110) + 'px';
+    };
+
+    recognition.onerror = function(e) {
+      isRec = false;
+      document.getElementById('micBtn').classList.remove('rec');
+      if (e.error !== 'aborted') {
+        console.warn('Mic error:', e.error);
+      }
+    };
+
+    recognition.start();
   }
-  
-  isLoading = false; document.getElementById('sendBtn').disabled = false;
-  document.getElementById('msgInput').focus();
-  updateUI();
-}
 
-// Utils (mantener igual)
-function addMsg(role, text, action) {
-  const c = document.getElementById('messages'), div = document.createElement('div');
-  div.className = 'message ' + role;
-  const isAi = role === 'ai';
-  div.innerHTML = `
-    <div class="msg-av ${isAi ? 'ai' : 'me'}">${isAi ? 'N' : 'Tú'}</div>
-    <div class="msg-body">
-      <div class="msg-who">${isAi ? 'Nova' : 'Tú'}</div>
-      <div class="msg-bubble">${fmt(text)}</div>
-      ${action ? `<div class="action-tag">⚡ ${escapeHtml(action)}</div>` : ''}
-    </div>`;
-  c.appendChild(div); c.scrollTop = c.scrollHeight;
-}
+  async function loadTasks() {
+    try { var r = await fetch('/api/tasks'); var d = await r.json(); updateUI(d.tasks, d.progress); } catch(e){}
+  }
 
-function showTyping() {
-  const c = document.getElementById('messages'), div = document.createElement('div');
-  div.className = 'message ai'; div.id = 'typing';
-  div.innerHTML = '<div class="msg-av ai">N</div><div class="msg-body"><div class="msg-who">Nova</div><div class="msg-bubble typing-dots"><div class="t-dot"></div><div class="t-dot"></div><div class="t-dot"></div></div></div>';
-  c.appendChild(div); c.scrollTop = c.scrollHeight;
-}
+  function updateUI(tasks, prog) {
+    var pct = prog.pct || 0, done = prog.done || 0, total = prog.total || 0;
+    var circ = 2 * Math.PI * 16;
+    document.getElementById('ringFill').style.strokeDasharray = circ;
+    document.getElementById('ringFill').style.strokeDashoffset = circ - (pct/100)*circ;
+    document.getElementById('ringNum').textContent = pct + '%';
+    document.getElementById('progCount').innerHTML = done + ' <span>/ ' + total + '</span>';
 
-function removeTyping() { const t = document.getElementById('typing'); if(t) t.remove(); }
+    var el = document.getElementById('taskList');
+    if (!tasks.length) { el.innerHTML = '<div class="no-tasks">Sin tareas aún.</div>'; return; }
+    var pending = tasks.filter(function(t){ return !t.done; });
+    var dones = tasks.filter(function(t){ return t.done; });
+    var h = '';
+    if (pending.length) {
+      h += '<div class="section-label">Pendientes</div>';
+      pending.forEach(function(t){
+        h += '<div class="task-row" onclick="qComplete(' + t.id + ')">' +
+          '<div class="t-check"><svg viewBox="0 0 10 8"><polyline points="1,4 4,7 9,1"/></svg></div>' +
+          '<div class="t-name">' + esc(t.name) + '</div></div>';
+      });
+    }
+    if (dones.length) {
+      h += '<div class="section-label" style="margin-top:6px">Hechas</div>';
+      dones.forEach(function(t){
+        h += '<div class="task-row done">' +
+          '<div class="t-check"><svg viewBox="0 0 10 8"><polyline points="1,4 4,7 9,1"/></svg></div>' +
+          '<div class="t-name">' + esc(t.name) + '</div></div>';
+      });
+    }
+    el.innerHTML = h;
+  }
 
-function fmt(t) {
-  return escapeHtml(t)
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/`(.*?)`/g, '<code style="background:#ffffff08;padding:1px 6px;border-radius:4px;font-family:DM Mono,monospace;font-size:12px">$1</code>')
-    .replace(/\n/g, '<br>');
-}
+  async function qComplete(id) {
+    await fetch('/api/tasks/' + id + '/complete', { method: 'POST' });
+    loadTasks(); addMsg('ai', 'Tarea completada ✓', null);
+  }
 
-function escapeHtml(t) { 
-  const div = document.createElement('div'); 
-  div.textContent = t; 
-  return div.innerHTML; 
-}
+  function sendSug(el){ document.getElementById('msgInput').value = el.textContent; sendMessage(); }
 
-function sendSug(el) { 
-  document.getElementById('msgInput').value = el.textContent; 
-  sendMessage(); 
-}
+  async function sendMessage() {
+    if (isLoading) return;
+    var inp = document.getElementById('msgInput'), text = inp.value.trim();
+    if (!text) return;
+    var w = document.getElementById('welcome'); if (w) w.remove();
+    inp.value = ''; inp.style.height = 'auto';
+    addMsg('user', text, null); hist.push({ role:'user', content:text });
+    showTyping(); isLoading = true; document.getElementById('sendBtn').disabled = true;
+    try {
+      var r = await fetch('/api/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ messages: hist }) });
+      var d = await r.json(); removeTyping();
+      addMsg('ai', d.message, d.action_result);
+      hist.push({ role:'assistant', content: d.message });
+      if (d.tasks) updateUI(d.tasks, { pct: d.progress[2], done: d.progress[1], total: d.progress[0] });
+    } catch(e) { removeTyping(); addMsg('ai', 'Error de conexión.', null); }
+    isLoading = false; document.getElementById('sendBtn').disabled = false;
+    document.getElementById('msgInput').focus();
+  }
 
-// Input events
-document.getElementById('msgInput').addEventListener('input', function() {
-  this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 110) + 'px';
-});
-document.getElementById('msgInput').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-});
+  function addMsg(role, text, action) {
+    var c = document.getElementById('messages'), div = document.createElement('div');
+    div.className = 'message ' + role;
+    var isAi = role === 'ai';
+    div.innerHTML =
+      '<div class="msg-av ' + (isAi ? 'ai' : 'me') + '">' + (isAi ? 'N' : 'tú') + '</div>' +
+      '<div class="msg-body"><div class="msg-who">' + (isAi ? 'Nova' : 'Tú') + '</div>' +
+      '<div class="msg-bubble">' + fmt(text) + '</div>' +
+      (action ? '<div class="action-tag">⚡ ' + esc(action) + '</div>' : '') + '</div>';
+    c.appendChild(div); c.scrollTop = c.scrollHeight;
+  }
 
-// INIT
-loadTasks();
-console.log('🚀 Nova Robust iniciada - Revisa console para logs');
+  function showTyping() {
+    var c = document.getElementById('messages'), div = document.createElement('div');
+    div.className = 'message ai'; div.id = 'typing';
+    div.innerHTML = '<div class="msg-av ai">N</div><div class="msg-body"><div class="msg-who">Nova</div>' +
+      '<div class="msg-bubble typing-dots"><div class="t-dot"></div><div class="t-dot"></div><div class="t-dot"></div></div></div>';
+    c.appendChild(div); c.scrollTop = c.scrollHeight;
+  }
+
+  function removeTyping(){ var t = document.getElementById('typing'); if(t) t.remove(); }
+
+  function fmt(t) {
+    return esc(t)
+      .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g,'<em>$1</em>')
+      .replace(/`(.*?)`/g,'<code style="background:#ffffff08;padding:1px 6px;border-radius:4px;font-family:DM Mono,monospace;font-size:12px">$1</code>')
+      .replace(/\n/g,'<br>');
+  }
+
+  function esc(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  document.getElementById('msgInput').addEventListener('input', function(){
+    this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 110) + 'px';
+  });
+  document.getElementById('msgInput').addEventListener('keydown', function(e){
+    if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }
+  });
+
+  loadTasks();
 </script>
 </body>
 </html>
