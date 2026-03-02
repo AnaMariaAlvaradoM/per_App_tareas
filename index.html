@@ -155,6 +155,29 @@
 
   .no-tasks { padding: 20px 18px; font-size: 12px; color: var(--text-dim); line-height: 1.6; }
 
+  .task-row { position: relative; }
+  .del-btn {
+    opacity: 0; position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    width: 20px; height: 20px; border-radius: 5px; border: none;
+    background: transparent; color: var(--text-dim); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s;
+  }
+  .task-row:hover .del-btn { opacity: 1; }
+  .del-btn:hover { background: #ef535020; color: #ef5350; }
+  .del-btn svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  .sidebar-footer {
+    padding: 10px 14px; border-top: 1px solid var(--border);
+    display: flex; gap: 6px; flex-shrink: 0;
+  }
+  .footer-btn {
+    flex: 1; padding: 7px 8px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text-dim); font-family: 'DM Sans', sans-serif;
+    font-size: 11px; cursor: pointer; transition: all .15s; text-align: center;
+  }
+  .footer-btn:hover { border-color: #ef5350; color: #ef5350; background: #ef535010; }
+
   /* ── MAIN ── */
   .main {
     flex: 1; display: flex; flex-direction: column; min-width: 0;
@@ -344,6 +367,10 @@
     <div class="task-list" id="taskList">
       <div class="no-tasks">Cuéntale a Nova qué tienes pendiente</div>
     </div>
+    <div class="sidebar-footer">
+      <button class="footer-btn" onclick="clearDone()">Limpiar hechas</button>
+      <button class="footer-btn" onclick="clearAll()">Borrar todo</button>
+    </div>
   </aside>
 
   <!-- MAIN -->
@@ -459,6 +486,24 @@
     recognition.start();
   }
 
+  async function delTask(id) {
+    await fetch('/api/tasks/' + id + '/delete', { method: 'POST' });
+    loadTasks();
+  }
+
+  async function clearDone() {
+    await fetch('/api/tasks/clear-done', { method: 'POST' });
+    loadTasks();
+    addMsg('ai', 'Tareas completadas eliminadas.', null);
+  }
+
+  async function clearAll() {
+    if (!confirm('¿Borrar TODAS las tareas?')) return;
+    await fetch('/api/tasks/clear-all', { method: 'POST' });
+    loadTasks();
+    addMsg('ai', 'Todas las tareas eliminadas.', null);
+  }
+
   async function loadTasks() {
     try { var r = await fetch('/api/tasks'); var d = await r.json(); updateUI(d.tasks, d.progress); } catch(e){}
   }
@@ -481,7 +526,10 @@
       pending.forEach(function(t){
         h += '<div class="task-row" onclick="qComplete(' + t.id + ')">' +
           '<div class="t-check"><svg viewBox="0 0 10 8"><polyline points="1,4 4,7 9,1"/></svg></div>' +
-          '<div class="t-name">' + esc(t.name) + '</div></div>';
+          '<div class="t-name">' + esc(t.name) + '</div>' +
+          '<button class="del-btn" onclick="event.stopPropagation();delTask(' + t.id + ')" title="Eliminar">' +
+          '<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+          '</button></div>';
       });
     }
     if (dones.length) {
@@ -489,7 +537,10 @@
       dones.forEach(function(t){
         h += '<div class="task-row done">' +
           '<div class="t-check"><svg viewBox="0 0 10 8"><polyline points="1,4 4,7 9,1"/></svg></div>' +
-          '<div class="t-name">' + esc(t.name) + '</div></div>';
+          '<div class="t-name">' + esc(t.name) + '</div>' +
+          '<button class="del-btn" onclick="event.stopPropagation();delTask(' + t.id + ')" title="Eliminar">' +
+          '<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+          '</button></div>';
       });
     }
     el.innerHTML = h;
