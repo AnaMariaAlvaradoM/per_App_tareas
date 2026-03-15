@@ -41,7 +41,11 @@ REGLA MÁS IMPORTANTE: Cuando necesites ejecutar una acción sobre tareas, SIEMP
 Para múltiples acciones, un JSON por línea dentro del bloque. SIEMPRE cierra con <<<END>>>.
 
 Acciones disponibles:
-- add_task: {"action": "add_task", "task": "nombre de la tarea"}
+- add_task: {"action": "add_task", "task": "nombre", "priority": "today"}
+  * priority puede ser "today" o "week"
+  * "today": cuando el usuario dice "hoy", "urgente", "esta tarde", "antes de las X", "lo necesito ya", "para hoy"
+  * "week": cuando dice "en algún momento", "esta semana", "cuando pueda", "sin urgencia", o no especifica cuándo
+  * Si no hay señal clara de tiempo, usa "week" por defecto
 - complete_task: {"action": "complete_task", "id": 123}
 - delete_task: {"action": "delete_task", "id": 123}
 - list_tasks: {"action": "list_tasks"}
@@ -49,12 +53,18 @@ Acciones disponibles:
 
 NUNCA muestres el bloque ACTION en tu texto visible. El usuario no debe verlo.
 NUNCA repitas tareas que ya existen en la lista.
-Si el usuario pide agregar varias tareas de una vez, agrégalas todas en un solo bloque ACTION."""
+Si el usuario pide agregar varias tareas de una vez, agrégalas todas en un solo bloque ACTION.
+Cuando menciones tareas en el chat, puedes referirte a las de "hoy" como urgentes o prioritarias y a las de "semana" como de la semana."""
 
 def build_context():
     tasks = get_tasks(done=False)
     task_str = "Tareas pendientes:\n"
-    task_str += "\n".join([f"- #{t[0]}: {t[1]}" for t in tasks]) if tasks else "(ninguna)"
+    if tasks:
+        for t in tasks:
+            priority_label = "[HOY]" if t[3] == "today" else "[semana]"
+            task_str += f"- #{t[0]}: {t[1]} {priority_label}\n"
+    else:
+        task_str += "(ninguna)"
     total, done, pct = get_progress()
     task_str += f"\nProgreso: {pct}% ({done}/{total})"
 
@@ -94,7 +104,8 @@ async def call_groq(messages: list) -> str:
 def execute_action(action_json: dict) -> str:
     action = action_json.get("action")
     if action == "add_task":
-        task_id = add_task(action_json["task"])
+        priority = action_json.get("priority", "week")
+        task_id = add_task(action_json["task"], priority)
         return f"Tarea #{task_id} agregada"
     elif action == "complete_task":
         name = complete_task(action_json["id"])
@@ -116,11 +127,9 @@ def parse_and_execute(raw: str):
     results = []
 
     if "<<<ACTION>>>" in raw:
-        # Siempre tomar lo que está ANTES del primer <<<ACTION>>>
         parts = raw.split("<<<ACTION>>>")
         clean = parts[0].strip()
 
-        # Buscar todos los JSONs en el bloque
         action_block = parts[1].split("<<<END>>>")[0] if "<<<END>>>" in parts[1] else parts[1]
         for match in re.finditer(r'\{[^{}]+\}', action_block):
             try:
@@ -136,7 +145,7 @@ def tasks_response():
     tasks = get_tasks(done=None)
     total, done, pct = get_progress()
     return {
-        "tasks": [{"id": t[0], "name": t[1], "done": bool(t[2])} for t in tasks],
+        "tasks": [{"id": t[0], "name": t[1], "done": bool(t[2]), "priority": t[3] or "week"} for t in tasks],
         "progress": {"total": total, "done": done, "pct": pct}
     }
 
@@ -186,7 +195,6 @@ async def chat(request: Request):
     raw = await call_groq(groq_messages)
     clean_text, action_result = parse_and_execute(raw)
 
-    # Guardar en memoria
     if messages:
         save_message("user", messages[-1]["content"])
     save_message("assistant", clean_text)

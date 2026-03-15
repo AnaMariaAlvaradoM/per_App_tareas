@@ -25,12 +25,21 @@ def init_db():
                     created_at TIMESTAMP DEFAULT NOW()
                 )
             """)
+            # Agrega la columna priority si no existe (migración segura)
+            cur.execute("""
+                ALTER TABLE tasks
+                ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'week'
+            """)
         conn.commit()
 
-def add_task(name: str) -> int:
+def add_task(name: str, priority: str = "week") -> int:
+    priority = priority if priority in ("today", "week") else "week"
     with get_conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("INSERT INTO tasks (name) VALUES (%s) RETURNING id", (name,))
+            cur.execute(
+                "INSERT INTO tasks (name, priority) VALUES (%s, %s) RETURNING id",
+                (name, priority)
+            )
             task_id = cur.fetchone()[0]
         conn.commit()
     return task_id
@@ -39,9 +48,19 @@ def get_tasks(done=False):
     with get_conn() as conn:
         with conn.cursor() as cur:
             if done is None:
-                cur.execute("SELECT id, name, done FROM tasks ORDER BY done ASC, id DESC")
+                # Pendientes: today primero, luego week. Hechas al final.
+                cur.execute("""
+                    SELECT id, name, done, priority FROM tasks
+                    ORDER BY done ASC,
+                             CASE priority WHEN 'today' THEN 0 ELSE 1 END ASC,
+                             id DESC
+                """)
             else:
-                cur.execute("SELECT id, name, done FROM tasks WHERE done = %s ORDER BY id DESC", (done,))
+                cur.execute("""
+                    SELECT id, name, done, priority FROM tasks
+                    WHERE done = %s
+                    ORDER BY CASE priority WHEN 'today' THEN 0 ELSE 1 END ASC, id DESC
+                """, (done,))
             return cur.fetchall()
 
 def complete_task(task_id: int):
@@ -78,7 +97,6 @@ def save_message(role: str, content: str):
         conn.commit()
 
 def get_today_messages():
-    """Trae todos los mensajes de hoy para contexto interno"""
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("""
@@ -89,7 +107,6 @@ def get_today_messages():
             return cur.fetchall()
 
 def get_recent_messages(days=7):
-    """Trae resumen de los ultimos N dias para memoria de largo plazo"""
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("""
