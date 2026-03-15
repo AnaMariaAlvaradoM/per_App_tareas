@@ -25,7 +25,6 @@ def init_db():
                     created_at TIMESTAMP DEFAULT NOW()
                 )
             """)
-            # Agrega la columna priority si no existe (migración segura)
             cur.execute("""
                 ALTER TABLE tasks
                 ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'week'
@@ -48,18 +47,17 @@ def get_tasks(done=False):
     with get_conn() as conn:
         with conn.cursor() as cur:
             if done is None:
-                # Pendientes: today primero, luego week. Hechas al final.
                 cur.execute("""
                     SELECT id, name, done, priority FROM tasks
                     ORDER BY done ASC,
-                             CASE priority WHEN 'today' THEN 0 ELSE 1 END ASC,
+                             CASE WHEN priority = 'today' THEN 0 ELSE 1 END ASC,
                              id DESC
                 """)
             else:
                 cur.execute("""
                     SELECT id, name, done, priority FROM tasks
                     WHERE done = %s
-                    ORDER BY CASE priority WHEN 'today' THEN 0 ELSE 1 END ASC, id DESC
+                    ORDER BY CASE WHEN priority = 'today' THEN 0 ELSE 1 END ASC, id DESC
                 """, (done,))
             return cur.fetchall()
 
@@ -74,11 +72,29 @@ def complete_task(task_id: int):
                 return row[0]
     return None
 
+def uncomplete_task(task_id: int):
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE tasks SET done = FALSE WHERE id = %s", (task_id,))
+        conn.commit()
+
 def delete_task(task_id: int):
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM tasks WHERE id = %s", (task_id,))
         conn.commit()
+
+def update_priority(task_id: int, priority: str):
+    priority = priority if priority in ("today", "week") else "week"
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT name FROM tasks WHERE id = %s", (task_id,))
+            row = cur.fetchone()
+            if row:
+                cur.execute("UPDATE tasks SET priority = %s WHERE id = %s", (priority, task_id))
+                conn.commit()
+                return row[0]
+    return None
 
 def get_progress():
     with get_conn() as conn:
