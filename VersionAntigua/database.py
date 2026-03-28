@@ -25,81 +25,41 @@ def init_db():
                     created_at TIMESTAMP DEFAULT NOW()
                 )
             """)
-            # Columnas originales
-            cur.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'week'")
-            # Columnas nuevas
-            cur.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'general'")
-            cur.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS estimated_minutes INTEGER DEFAULT NULL")
-            cur.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS deadline DATE DEFAULT NULL")
+            cur.execute("""
+                ALTER TABLE tasks
+                ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'week'
+            """)
         conn.commit()
 
-# ─── TAREAS ───────────────────────────────────────────────────────────────────
-
-VALID_PRIORITIES = ("today", "week")
-VALID_CATEGORIES = ("trabajo", "personal", "salud", "casa", "otro", "general")
-
-def _clean_priority(p):
-    return p if p in VALID_PRIORITIES else "week"
-
-def _clean_category(c):
-    if c is None:
-        return "general"
-    c = c.lower().strip()
-    return c if c in VALID_CATEGORIES else "general"
-
-def add_task(name: str, priority: str = "week", category: str = "general",
-             estimated_minutes: int = None, deadline: str = None) -> int:
-    priority = _clean_priority(priority)
-    category = _clean_category(category)
+def add_task(name: str, priority: str = "week") -> int:
+    priority = priority if priority in ("today", "week") else "week"
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """INSERT INTO tasks (name, priority, category, estimated_minutes, deadline)
-                   VALUES (%s, %s, %s, %s, %s) RETURNING id""",
-                (name, priority, category, estimated_minutes, deadline)
+                "INSERT INTO tasks (name, priority) VALUES (%s, %s) RETURNING id",
+                (name, priority)
             )
             task_id = cur.fetchone()[0]
         conn.commit()
     return task_id
 
 def get_tasks(done=False):
-    """
-    Retorna: id, name, done, priority, category, estimated_minutes, deadline
-    done=False → pendientes | done=True → completadas | done=None → todas
-    """
     with get_conn() as conn:
         with conn.cursor() as cur:
             if done is None:
                 cur.execute("""
-                    SELECT id, name, done, priority, category, estimated_minutes, deadline
-                    FROM tasks
+                    SELECT id, name, done, priority FROM tasks
                     ORDER BY done ASC,
                              CASE WHEN priority = 'today' THEN 0 ELSE 1 END ASC,
                              id DESC
                 """)
             else:
                 cur.execute("""
-                    SELECT id, name, done, priority, category, estimated_minutes, deadline
-                    FROM tasks
+                    SELECT id, name, done, priority FROM tasks
                     WHERE done = %s
                     ORDER BY CASE WHEN priority = 'today' THEN 0 ELSE 1 END ASC, id DESC
                 """, (done,))
             return cur.fetchall()
-
-def get_today_load():
-    """
-    Retorna minutos estimados totales y conteo de tareas HOY no completadas.
-    Usado para el panel de carga del día.
-    """
-    with get_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT COUNT(*), COALESCE(SUM(estimated_minutes), 0)
-                FROM tasks
-                WHERE priority = 'today' AND done = FALSE
-            """)
-            count, total_minutes = cur.fetchone()
-    return int(count), int(total_minutes)
 
 def complete_task(task_id: int):
     with get_conn() as conn:
@@ -125,7 +85,7 @@ def delete_task(task_id: int):
         conn.commit()
 
 def update_priority(task_id: int, priority: str):
-    priority = _clean_priority(priority)
+    priority = priority if priority in ("today", "week") else "week"
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT name FROM tasks WHERE id = %s", (task_id,))
@@ -136,24 +96,6 @@ def update_priority(task_id: int, priority: str):
                 return row[0]
     return None
 
-def update_task_fields(task_id: int, category: str = None,
-                       estimated_minutes: int = None, deadline: str = None):
-    """Actualiza categoría, tiempo estimado y/o deadline de una tarea."""
-    with get_conn() as conn:
-        with conn.cursor() as cur:
-            if category is not None:
-                cur.execute("UPDATE tasks SET category = %s WHERE id = %s",
-                            (_clean_category(category), task_id))
-            if estimated_minutes is not None:
-                cur.execute("UPDATE tasks SET estimated_minutes = %s WHERE id = %s",
-                            (estimated_minutes, task_id))
-            if deadline is not None:
-                cur.execute("UPDATE tasks SET deadline = %s WHERE id = %s",
-                            (deadline, task_id))
-        conn.commit()
-
-# ─── PROGRESO ─────────────────────────────────────────────────────────────────
-
 def get_progress():
     with get_conn() as conn:
         with conn.cursor() as cur:
@@ -163,8 +105,6 @@ def get_progress():
             done = cur.fetchone()[0]
     pct = round((done / total * 100) if total > 0 else 0)
     return total, done, pct
-
-# ─── MENSAJES ─────────────────────────────────────────────────────────────────
 
 def save_message(role: str, content: str):
     with get_conn() as conn:
