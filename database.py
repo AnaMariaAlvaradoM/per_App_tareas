@@ -18,10 +18,12 @@ def init_db():
                     text TEXT NOT NULL,
                     done BOOLEAN DEFAULT FALSE,
                     due DATE DEFAULT NULL,
+                    sort INTEGER DEFAULT 0,
                     created_at TIMESTAMP DEFAULT NOW()
                 )
             """)
             cur.execute("ALTER TABLE items ADD COLUMN IF NOT EXISTS due DATE DEFAULT NULL")
+            cur.execute("ALTER TABLE items ADD COLUMN IF NOT EXISTS sort INTEGER DEFAULT 0")
         conn.commit()
 
 
@@ -29,9 +31,13 @@ def add_item(text: str, due: str = None) -> dict:
     """Guarda una línea. due opcional en formato 'YYYY-MM-DD' o None."""
     with get_conn() as conn:
         with conn.cursor() as cur:
+            # Nuevo item va arriba: sort menor que el mínimo actual
+            cur.execute("SELECT COALESCE(MIN(sort), 0) - 1 FROM items WHERE done = FALSE")
+            new_sort = cur.fetchone()[0]
             cur.execute(
-                "INSERT INTO items (text, due) VALUES (%s, %s) RETURNING id, text, done, due",
-                (text.strip(), due),
+                "INSERT INTO items (text, due, sort) VALUES (%s, %s, %s) "
+                "RETURNING id, text, done, due",
+                (text.strip(), due, new_sort),
             )
             row = cur.fetchone()
         conn.commit()
@@ -51,8 +57,7 @@ def get_items():
                 FROM items
                 ORDER BY
                     done ASC,
-                    CASE WHEN due IS NULL THEN 1 ELSE 0 END ASC,
-                    due ASC,
+                    sort ASC,
                     id DESC
             """)
             rows = cur.fetchall()
@@ -88,6 +93,28 @@ def set_due(item_id: int, due: str) -> dict:
             row = cur.fetchone()
         conn.commit()
     return _row_to_dict(row) if row else None
+
+
+def edit_item(item_id: int, text: str) -> dict:
+    """Corrige el texto de un item sin borrarlo."""
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE items SET text = %s WHERE id = %s RETURNING id, text, done, due",
+                (text.strip(), item_id),
+            )
+            row = cur.fetchone()
+        conn.commit()
+    return _row_to_dict(row) if row else None
+
+
+def reorder_items(ordered_ids: list):
+    """Guarda el nuevo orden. ordered_ids = lista de ids en el orden deseado."""
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            for pos, iid in enumerate(ordered_ids):
+                cur.execute("UPDATE items SET sort = %s WHERE id = %s", (pos, iid))
+        conn.commit()
 
 
 def delete_item(item_id: int):

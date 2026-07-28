@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import (
     init_db, add_item, get_items, toggle_item,
     set_due, delete_item, get_due_today_count,
+    edit_item, reorder_items,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -137,8 +138,10 @@ def greeting():
 
 @app.get("/api/state")
 async def state():
-    items = [enrich(i) for i in get_items()]
-    return {"greeting": greeting(), "items": items}
+    all_items = [enrich(i) for i in get_items()]
+    pending = [i for i in all_items if not i["done"]]
+    done = [i for i in all_items if i["done"]]
+    return {"greeting": greeting(), "pending": pending, "done": done}
 
 
 @app.post("/api/add")
@@ -174,6 +177,26 @@ async def due(item_id: int, request: Request):
     if not item:
         return JSONResponse({"error": "no existe"}, status_code=404)
     return enrich(item)
+
+
+@app.post("/api/edit/{item_id}")
+async def edit(item_id: int, request: Request):
+    data = await request.json()
+    text = (data.get("text") or "").strip()
+    if not text:
+        return JSONResponse({"error": "vacío"}, status_code=400)
+    item = edit_item(item_id, text)
+    if not item:
+        return JSONResponse({"error": "no existe"}, status_code=404)
+    return enrich(item)
+
+
+@app.post("/api/reorder")
+async def reorder(request: Request):
+    data = await request.json()
+    ids = data.get("ids") or []
+    reorder_items(ids)
+    return {"ok": True}
 
 
 @app.delete("/api/item/{item_id}")

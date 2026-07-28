@@ -8,201 +8,180 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.47.0/iconfont/tabler-icons.min.css" rel="stylesheet">
 <style>
   :root{
-    --bg:#0f0f10;
-    --surface:#18181b;
-    --surface-2:#202024;
-    --border:#2a2a2e;
-    --border-strong:#3a3a40;
-    --text:#f2f2f0;
-    --text-dim:#a0a0a0;
-    --text-faint:#6b6b70;
-    --accent:#7c6cf5;
-    --warn:#e0a12a;
-    --warn-bg:rgba(224,161,42,.14);
-    --danger:#e05a52;
-    --success:#4caf7d;
-    --radius:14px;
+    --bg:#0f0f10; --surface:#18181b; --surface-2:#202024;
+    --border:#2a2a2e; --border-strong:#3a3a40;
+    --text:#f2f2f0; --text-dim:#a0a0a0; --text-faint:#6b6b70;
+    --accent:#7c6cf5; --warn:#e0a12a; --warn-bg:rgba(224,161,42,.14);
+    --danger:#e05a52; --success:#4caf7d; --radius:14px;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
   html,body{height:100%;}
   body{
-    background:var(--bg);
-    color:var(--text);
+    background:var(--bg);color:var(--text);
     font-family:'Instrument Sans',system-ui,sans-serif;
-    font-size:16px;
-    line-height:1.5;
-    display:flex;
-    justify-content:center;
-    padding:0 16px;
+    font-size:16px;line-height:1.5;
+    display:flex;justify-content:center;padding:0 16px;
   }
-  #app{
-    width:100%;
-    max-width:440px;
-    min-height:100vh;
-    display:flex;
-    flex-direction:column;
-    padding:28px 4px 40px;
-  }
+  #app{width:100%;max-width:440px;min-height:100vh;
+    display:flex;flex-direction:column;padding:28px 4px 60px;}
 
-  /* Encabezado / saludo */
   header{margin-bottom:22px;}
   .brand{display:flex;align-items:baseline;gap:10px;}
   .brand h1{font-size:26px;font-weight:600;letter-spacing:-.5px;}
   .brand .fecha{font-size:13px;color:var(--text-faint);}
   .saludo{font-size:15px;color:var(--text-dim);margin-top:8px;line-height:1.45;}
 
-  /* Caja de entrada */
-  .caja{
-    display:flex;align-items:center;gap:10px;
-    background:var(--surface-2);
-    border:1px solid var(--border-strong);
-    border-radius:var(--radius);
-    padding:14px 16px;
-    margin-bottom:6px;
-    transition:border-color .15s;
-  }
+  .caja{display:flex;align-items:center;gap:10px;
+    background:var(--surface-2);border:1px solid var(--border-strong);
+    border-radius:var(--radius);padding:14px 16px;margin-bottom:6px;
+    transition:border-color .15s;}
   .caja:focus-within{border-color:var(--accent);}
-  .caja i{color:var(--text-faint);font-size:18px;flex-shrink:0;}
-  .caja input{
-    flex:1;background:none;border:none;outline:none;
-    color:var(--text);font-family:inherit;font-size:16px;
-  }
+  .caja .plus{font-size:20px;color:var(--text-faint);flex-shrink:0;line-height:1;}
+  .caja input{flex:1;background:none;border:none;outline:none;
+    color:var(--text);font-family:inherit;font-size:16px;}
   .caja input::placeholder{color:var(--text-faint);}
   .hint{font-size:12px;color:var(--text-faint);margin:0 4px 20px;}
 
-  /* Lista */
   ul{list-style:none;}
-  li{
-    display:flex;align-items:flex-start;gap:12px;
-    padding:14px 4px;
-    border-bottom:1px solid var(--border);
-    animation:fade .25s ease;
-  }
+  li{display:flex;align-items:flex-start;gap:12px;padding:14px 4px;
+    border-bottom:1px solid var(--border);animation:fade .25s ease;
+    user-select:none;position:relative;transition:background .15s,opacity .2s;}
+  li.dragging{opacity:.5;background:var(--surface-2);border-radius:10px;}
+  li.dragover{border-top:2px solid var(--accent);}
   @keyframes fade{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:none;}}
-  .check{
-    width:22px;height:22px;border-radius:7px;
-    border:2px solid var(--border-strong);
+
+  .check{width:22px;height:22px;border-radius:7px;border:2px solid var(--border-strong);
     flex-shrink:0;margin-top:1px;cursor:pointer;
-    display:flex;align-items:center;justify-content:center;
-    transition:all .15s;
-  }
+    display:flex;align-items:center;justify-content:center;transition:all .15s;}
   .check:active{transform:scale(.9);}
   .check.on{background:var(--success);border-color:var(--success);}
-  .check.on i{color:#0f0f10;font-size:14px;}
-  .check i{opacity:0;font-size:14px;}
+  .check i{opacity:0;font-size:14px;color:#0f0f10;}
   .check.on i{opacity:1;}
 
   .body{flex:1;min-width:0;}
-  .txt{font-size:16px;word-wrap:break-word;line-height:1.4;}
+  .txt{font-size:16px;word-wrap:break-word;line-height:1.4;cursor:pointer;}
   li.done .txt{color:var(--text-faint);text-decoration:line-through;}
-  .tag{
-    display:inline-block;margin-top:5px;font-size:12px;
-    padding:2px 9px;border-radius:7px;
-    color:var(--text-dim);background:var(--surface-2);
-  }
+  .tag{display:inline-block;margin-top:5px;font-size:12px;padding:2px 9px;
+    border-radius:7px;color:var(--text-dim);background:var(--surface-2);}
   .tag.urgent{color:var(--warn);background:var(--warn-bg);}
   .tag i{font-size:11px;vertical-align:-1px;margin-right:3px;}
 
-  .del{
-    color:var(--text-faint);background:none;border:none;
-    cursor:pointer;font-size:18px;padding:2px 4px;flex-shrink:0;
-    opacity:0;transition:opacity .15s,color .15s;
-  }
-  li:hover .del{opacity:1;}
-  .del:hover{color:var(--danger);}
+  /* input de edición en línea */
+  .edit-input{width:100%;background:var(--surface);border:1px solid var(--accent);
+    border-radius:8px;padding:6px 10px;color:var(--text);
+    font-family:inherit;font-size:16px;outline:none;}
 
-  /* Estado vacío */
-  .empty{
-    text-align:center;color:var(--text-faint);
-    padding:48px 20px;font-size:15px;line-height:1.6;
-  }
+  /* menú de opciones al mantener presionado */
+  .menu{display:flex;gap:8px;margin-top:10px;animation:fade .2s ease;}
+  .menu button{display:flex;align-items:center;gap:5px;
+    background:var(--surface-2);border:1px solid var(--border-strong);
+    color:var(--text-dim);font-family:inherit;font-size:13px;
+    padding:7px 12px;border-radius:9px;cursor:pointer;transition:all .12s;}
+  .menu button:active{transform:scale(.95);}
+  .menu button.danger{color:var(--danger);}
+  .menu button i{font-size:15px;}
+
+  .divider{display:flex;align-items:center;gap:10px;
+    margin:26px 4px 6px;color:var(--text-faint);font-size:13px;}
+  .divider::after{content:"";flex:1;height:1px;background:var(--border);}
+
+  li.done{opacity:.5;}
+  li.done .menu{}
+
+  .empty{text-align:center;color:var(--text-faint);
+    padding:48px 20px;font-size:15px;line-height:1.6;}
   .empty i{font-size:32px;display:block;margin-bottom:12px;opacity:.5;}
 
-  /* Toast deshacer */
-  #toast{
-    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
+  #toast{position:fixed;bottom:24px;left:50%;
+    transform:translateX(-50%) translateY(80px);
     background:var(--surface-2);border:1px solid var(--border-strong);
-    border-radius:12px;padding:12px 16px;
-    display:flex;align-items:center;gap:14px;
-    font-size:14px;color:var(--text);
-    transition:transform .25s ease;z-index:50;
-    box-shadow:0 8px 24px rgba(0,0,0,.4);
-  }
+    border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:14px;
+    font-size:14px;color:var(--text);transition:transform .25s ease;z-index:50;
+    box-shadow:0 8px 24px rgba(0,0,0,.4);}
   #toast.show{transform:translateX(-50%) translateY(0);}
-  #toast button{
-    background:none;border:none;color:var(--accent);
-    font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;
-  }
-
-  @media (min-width:441px){ .del{opacity:.4;} }
+  #toast button{background:none;border:none;color:var(--accent);
+    font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;}
 </style>
 </head>
 <body>
 <div id="app">
   <header>
-    <div class="brand">
-      <h1>Nova</h1>
-      <span class="fecha" id="fecha"></span>
-    </div>
+    <div class="brand"><h1>Nova</h1><span class="fecha" id="fecha"></span></div>
     <p class="saludo" id="saludo">Cargando…</p>
   </header>
 
   <div class="caja">
-    <span style="font-size:18px;color:var(--text-faint);">+</span>
+    <span class="plus">+</span>
     <input id="input" type="text" placeholder="Escribe lo que sea…"
            autocomplete="off" autocapitalize="sentences" enterkeyhint="done">
   </div>
-  <p class="hint">Una línea y ya queda. Si escribes “mañana” o “el viernes”, le pongo fecha sola.</p>
+  <p class="hint">Una línea y ya queda. Mantén presionada una tarea para editarla. Si escribes “mañana” o “el viernes”, le pongo fecha sola.</p>
 
-  <ul id="lista"></ul>
+  <ul id="pending"></ul>
+  <div id="done-wrap"></div>
 
-  <div id="toast">
-    <span id="toast-txt"></span>
-    <button id="undo">Deshacer</button>
-  </div>
+  <div id="toast"><span id="toast-txt"></span><button id="undo">Deshacer</button></div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.47.0/iconfont/tabler-icons.min.css" rel="stylesheet" as="style" onload="this.rel='stylesheet'"></script>
-<link href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.47.0/iconfont/tabler-icons.min.css" rel="stylesheet">
 <script>
 const $ = s => document.querySelector(s);
-const lista = $("#lista");
-const input = $("#input");
-let lastDeleted = null;
-let toastTimer = null;
+const pendingUl = $("#pending");
+let lastDeleted = null, toastTimer = null;
+let openMenuId = null;      // tarea con menú abierto
+let editingId = null;       // tarea en edición
+let pressTimer = null;      // temporizador de "mantener presionado"
+let dragId = null;          // arrastre
 
 async function load(){
   const r = await fetch("/api/state");
-  const data = await r.json();
-  $("#fecha").textContent = data.greeting.fecha;
-  $("#saludo").innerHTML = `<strong style="color:var(--text)">${data.greeting.saludo}</strong> ${data.greeting.linea}`;
-  render(data.items);
+  const d = await r.json();
+  $("#fecha").textContent = d.greeting.fecha;
+  $("#saludo").innerHTML =
+    `<strong style="color:var(--text)">${d.greeting.saludo}</strong> ${d.greeting.linea}`;
+  renderPending(d.pending);
+  renderDone(d.done);
 }
 
-function render(items){
-  lista.innerHTML = "";
+function renderPending(items){
+  pendingUl.innerHTML = "";
   if(!items.length){
-    lista.innerHTML = `<div class="empty"><i class="ti ti-notes"></i>
+    pendingUl.innerHTML = `<div class="empty"><i class="ti ti-notes"></i>
       Aquí vive todo lo que traes en la cabeza.<br>Escribe arriba y suéltalo.</div>`;
     return;
   }
-  for(const it of items) lista.appendChild(row(it));
+  for(const it of items) pendingUl.appendChild(row(it, false));
 }
 
-function row(it){
+function renderDone(items){
+  const wrap = $("#done-wrap");
+  wrap.innerHTML = "";
+  if(!items.length) return;
+  const div = document.createElement("div");
+  div.className = "divider";
+  div.textContent = `Hechas hoy (${items.length})`;
+  wrap.appendChild(div);
+  const ul = document.createElement("ul");
+  for(const it of items) ul.appendChild(row(it, true));
+  wrap.appendChild(ul);
+}
+
+function row(it, isDone){
   const li = document.createElement("li");
-  li.className = it.done ? "done" : "";
+  li.className = isDone ? "done" : "";
   li.dataset.id = it.id;
+  if(!isDone) li.draggable = true;
 
   const check = document.createElement("div");
-  check.className = "check" + (it.done ? " on" : "");
+  check.className = "check" + (isDone ? " on" : "");
   check.innerHTML = '<i class="ti ti-check"></i>';
-  check.onclick = () => toggle(it.id, li);
+  check.onclick = e => { e.stopPropagation(); toggle(it.id, li); };
 
   const body = document.createElement("div");
   body.className = "body";
+
   const txt = document.createElement("div");
   txt.className = "txt";
   txt.textContent = it.text;
@@ -215,36 +194,119 @@ function row(it){
     body.appendChild(tag);
   }
 
-  const del = document.createElement("button");
-  del.className = "del";
-  del.innerHTML = '<i class="ti ti-x"></i>';
-  del.onclick = () => removeItem(it, li);
+  // menú si esta tarea está abierta
+  if(openMenuId === it.id && !isDone){
+    body.appendChild(buildMenu(it));
+  }
 
-  li.append(check, body, del);
+  li.append(check, body);
+
+  if(!isDone){
+    // mantener presionado (touch + mouse) para abrir menú
+    const start = () => { pressTimer = setTimeout(() => openMenu(it.id), 450); };
+    const cancel = () => clearTimeout(pressTimer);
+    li.addEventListener("touchstart", start, {passive:true});
+    li.addEventListener("touchend", cancel);
+    li.addEventListener("touchmove", cancel);
+    li.addEventListener("mousedown", start);
+    li.addEventListener("mouseup", cancel);
+    li.addEventListener("mouseleave", cancel);
+    // tocar el texto también abre opciones (rápido en desktop)
+    txt.ondblclick = () => startEdit(it);
+
+    // arrastrar para reordenar (desktop)
+    li.addEventListener("dragstart", () => { dragId = it.id; li.classList.add("dragging"); });
+    li.addEventListener("dragend", () => { li.classList.remove("dragging"); saveOrder(); });
+    li.addEventListener("dragover", e => { e.preventDefault();
+      const dragging = pendingUl.querySelector(".dragging");
+      if(dragging && dragging !== li){
+        const rect = li.getBoundingClientRect();
+        const after = e.clientY > rect.top + rect.height/2;
+        pendingUl.insertBefore(dragging, after ? li.nextSibling : li);
+      }
+    });
+  }
   return li;
 }
 
-async function addItem(text){
-  const r = await fetch("/api/add", {
-    method:"POST", headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({text})
+function buildMenu(it){
+  const menu = document.createElement("div");
+  menu.className = "menu";
+  menu.innerHTML = `
+    <button data-a="edit"><i class="ti ti-pencil"></i>Editar</button>
+    <button data-a="date"><i class="ti ti-calendar"></i>Fecha</button>
+    <button data-a="del" class="danger"><i class="ti ti-trash"></i>Eliminar</button>`;
+  menu.querySelector('[data-a="edit"]').onclick = e => { e.stopPropagation(); startEdit(it); };
+  menu.querySelector('[data-a="del"]').onclick = e => { e.stopPropagation(); removeItem(it); };
+  menu.querySelector('[data-a="date"]').onclick = e => { e.stopPropagation(); cycleDate(it); };
+  return menu;
+}
+
+function openMenu(id){ openMenuId = (openMenuId === id ? null : id); load(); }
+
+function startEdit(it){
+  editingId = it.id; openMenuId = null;
+  const li = pendingUl.querySelector(`li[data-id="${it.id}"]`);
+  if(!li) return;
+  const body = li.querySelector(".body");
+  body.innerHTML = "";
+  const inp = document.createElement("input");
+  inp.className = "edit-input";
+  inp.value = it.text;
+  body.appendChild(inp);
+  inp.focus();
+  inp.setSelectionRange(inp.value.length, inp.value.length);
+  const save = async () => {
+    const v = inp.value.trim();
+    editingId = null;
+    if(v && v !== it.text){
+      await fetch(`/api/edit/${it.id}`, {method:"POST",
+        headers:{"Content-Type":"application/json"}, body:JSON.stringify({text:v})});
+    }
+    load();
+  };
+  inp.addEventListener("keydown", e => {
+    if(e.key === "Enter") save();
+    if(e.key === "Escape"){ editingId = null; load(); }
   });
+  inp.addEventListener("blur", save);
+}
+
+async function cycleDate(it){
+  // rota: sin fecha -> hoy -> mañana -> sin fecha
+  let when = "today";
+  if(it.due_label === "hoy") when = "tomorrow";
+  else if(it.due_label === "mañana") when = "clear";
+  openMenuId = null;
+  await fetch(`/api/due/${it.id}`, {method:"POST",
+    headers:{"Content-Type":"application/json"}, body:JSON.stringify({when})});
+  load();
+}
+
+async function addItem(text){
+  const r = await fetch("/api/add", {method:"POST",
+    headers:{"Content-Type":"application/json"}, body:JSON.stringify({text})});
   if(r.ok) load();
 }
 
 async function toggle(id, li){
-  const check = li.querySelector(".check");
-  const on = check.classList.toggle("on");
-  li.classList.toggle("done", on);
   await fetch(`/api/toggle/${id}`, {method:"POST"});
-  setTimeout(load, 400);
+  openMenuId = null;
+  load();
 }
 
-async function removeItem(it, li){
-  li.remove();
+async function removeItem(it){
+  openMenuId = null;
   lastDeleted = it;
   await fetch(`/api/item/${it.id}`, {method:"DELETE"});
   showToast("Eliminado");
+  load();
+}
+
+async function saveOrder(){
+  const ids = [...pendingUl.querySelectorAll("li")].map(li => parseInt(li.dataset.id));
+  await fetch("/api/reorder", {method:"POST",
+    headers:{"Content-Type":"application/json"}, body:JSON.stringify({ids})});
 }
 
 function showToast(msg){
@@ -256,25 +318,27 @@ function showToast(msg){
 
 $("#undo").onclick = async () => {
   if(!lastDeleted) return;
-  await fetch("/api/add", {
-    method:"POST", headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({text: lastDeleted.text})
-  });
+  await fetch("/api/add", {method:"POST",
+    headers:{"Content-Type":"application/json"}, body:JSON.stringify({text:lastDeleted.text})});
   lastDeleted = null;
   $("#toast").classList.remove("show");
   load();
 };
 
-input.addEventListener("keydown", e => {
-  if(e.key === "Enter" && input.value.trim()){
-    const v = input.value.trim();
-    input.value = "";
-    addItem(v);
+$("#input").addEventListener("keydown", e => {
+  const inp = $("#input");
+  if(e.key === "Enter" && inp.value.trim()){
+    const v = inp.value.trim(); inp.value = ""; addItem(v);
   }
 });
 
+// tocar fuera cierra el menú abierto
+document.addEventListener("click", e => {
+  if(openMenuId && !e.target.closest("li")){ openMenuId = null; load(); }
+});
+
 load();
-setInterval(load, 60000);
+setInterval(() => { if(!editingId && !openMenuId) load(); }, 60000);
 </script>
 </body>
 </html>
