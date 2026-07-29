@@ -1,5 +1,8 @@
 import os
+from contextlib import contextmanager
+
 import psycopg2
+from psycopg2.pool import ThreadedConnectionPool
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
@@ -8,9 +11,37 @@ DATABASE_URL = os.environ.get("DATABASE_URL")
 # el backend nunca debe guardar una sexta prioridad.
 TODAY_LIMIT = 5
 
+_pool = None
 
+
+def _get_pool():
+    global _pool
+    if _pool is None:
+        _pool = ThreadedConnectionPool(1, 5, dsn=DATABASE_URL)
+    return _pool
+
+
+@contextmanager
 def get_conn():
-    return psycopg2.connect(DATABASE_URL)
+    """
+    Presta una conexión del pool y SIEMPRE la devuelve al terminar (con
+    rollback si algo falló, para no reciclar una transacción a medias).
+
+    Antes esta función hacía `psycopg2.connect(...)` directo: abría una
+    conexión física nueva en CADA llamada y nunca la cerraba explícitamente
+    (solo confiaba en que el recolector de basura de Python la liberara
+    tarde o temprano). Con el uso normal de la app eso termina agotando
+    el límite de conexiones de Supabase, y entonces /api/state empieza a
+    fallar de forma intermitente aunque el resto de la app siga andando.
+    """
+    conn = _get_pool().getconn()
+    try:
+        yield conn
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        _get_pool().putconn(conn)
 
 
 def init_db():
@@ -129,6 +160,10 @@ def toggle_today(item_id: int) -> dict:
     TODAY_LIMIT tareas activas en Hoy, no la mueve y retorna
     {"limit_reached": True} en vez del item, para que main.py pueda avisar
     sin adivinar reglas de negocio en la capa HTTP.
+
+    El conteo se hace con el MISMO cursor/conexión de esta función (antes
+    llamaba a count_today_active(), que abría una segunda conexión al
+    mismo tiempo que esta ya tenía una abierta).
     """
     with get_conn() as conn:
         with conn.cursor() as cur:
@@ -137,8 +172,10 @@ def toggle_today(item_id: int) -> dict:
             if not row:
                 return None
             new_value = not row[0]
-            if new_value and count_today_active() >= TODAY_LIMIT:
-                return {"limit_reached": True}
+            if new_value:
+                cur.execute("SELECT COUNT(*) FROM items WHERE today = TRUE AND done = FALSE")
+                if cur.fetchone()[0] >= TODAY_LIMIT:
+                    return {"limit_reached": True}
             cur.execute(
                 """UPDATE items SET today = %s WHERE id = %s
                    RETURNING id, text, done, due, today, important, completed_at""",
