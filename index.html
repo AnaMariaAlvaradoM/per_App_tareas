@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#17151a">
 <meta name="description" content="Nova — escribe lo que traes en la cabeza y guárdalo en segundos.">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Nova</title>
@@ -14,7 +15,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif:ital@1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.47.0/iconfont/tabler-icons.min.css" rel="stylesheet">
 <style>
   :root{
     --bg:#17151a; --bg-elevated:#1c1a22;
@@ -79,7 +79,7 @@
     padding:0 16px;min-height:52px;
     transition:border-color .15s var(--ease),box-shadow .15s var(--ease);}
   .field:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg);}
-  .field i{color:var(--text-faint);font-size:19px;flex-shrink:0;}
+  .field svg{width:19px;height:19px;color:var(--text-faint);flex-shrink:0;}
   #input{flex:1;background:none;border:none;outline:none;color:var(--text);
     font:inherit;font-size:16px;min-height:52px;}
   #input::placeholder{color:var(--text-faint);}
@@ -122,7 +122,7 @@
     width:44px;height:44px;flex-shrink:0;cursor:pointer;background:none;
     border:none;border-radius:999px;color:var(--text-dim);
     transition:background .15s var(--ease),color .15s var(--ease),border-color .15s var(--ease);}
-  .icon-btn .ti{font-size:18px;}
+  .icon-btn svg{width:18px;height:18px;}
 
   .check-hit{width:44px;height:44px;display:flex;align-items:center;
     justify-content:center;flex-shrink:0;margin:-11px 0 -11px -10px;}
@@ -142,7 +142,7 @@
     font-size:14px;padding:2px 10px;border-radius:999px;
     color:var(--accent-bright);background:var(--accent-bg);
     font-family:var(--font-mono);}
-  .tag .ti{font-size:13px;}
+  .tag svg{width:14px;height:14px;flex-shrink:0;}
   .tag.urgent{color:var(--warn);background:var(--warn-bg);}
   .tag.overdue{color:var(--danger);background:var(--danger-bg);}
 
@@ -160,8 +160,8 @@
   .act.danger:hover{border-color:var(--danger);color:var(--danger);background:var(--danger-bg);}
 
   .empty{padding:44px 22px;text-align:center;}
-  .empty .icon{font-size:26px;color:var(--accent);opacity:.55;
-    display:block;margin-bottom:12px;}
+  .empty .icon{width:28px;height:28px;color:var(--accent);opacity:.55;
+    display:block;margin:0 auto 12px;}
   .empty h3{font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px;}
   .empty p{font-size:14px;color:var(--text-dim);line-height:1.55;
     max-width:320px;margin:0 auto;}
@@ -218,7 +218,10 @@
       <form id="capture-form" autocomplete="off">
         <label for="input" class="sr-only">Escribe una tarea y presiona Enter</label>
         <div class="field">
-          <i class="ti ti-plus" aria-hidden="true"></i>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
           <input id="input" name="text" type="text"
                  placeholder="Escribe una tarea y presiona Enter…"
                  autocomplete="off" autocapitalize="sentences" enterkeyhint="done" autofocus>
@@ -256,15 +259,41 @@ let dragId = null;
 let lastDeleted = null;    // item completo, para poder deshacer el borrado
 let toastTimer = null;
 
+// ─── Íconos: SVG en línea, sin depender de ninguna CDN externa ─────────────
+// (antes usábamos la fuente de íconos de cdnjs; si esa red falla, cae
+// silenciosamente en nada visible, así que estos se dibujan a mano y
+// heredan color con currentColor).
+
+const ICON_PATHS = {
+  notes: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
+  target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>',
+  calendar: '<rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/>',
+  checks: '<path d="M2.5 12.5l3.5 3.5L13 8"/><path d="M9 13l3 3 8-9"/>',
+  alert: '<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/>',
+  pencil: '<path d="M4 20l.9-4L15 5.9a1.5 1.5 0 0 1 2.1 0l1 1a1.5 1.5 0 0 1 0 2.1L8 19l-4 1Z"/><path d="M13.5 7.5l3 3"/>',
+  flag: '<path d="M5 21V4"/><path d="M5 5h12l-2.5 3.5L17 12H5"/>',
+  flagOff: '<path d="M5 21V4"/><path d="M5 5h12l-2.5 3.5L17 12H5"/><path d="M3 3l18 18"/>',
+  trash: '<path d="M4 7h16"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9.5 7V4.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V7"/><path d="M10 11v6M14 11v6"/>',
+  star: '<path d="M12 3.5l2.6 5.6 6.1.6-4.6 4.1 1.4 6-5.5-3.2-5.5 3.2 1.4-6-4.6-4.1 6.1-.6Z"/>',
+  starFilled: '<path d="M12 3.5l2.6 5.6 6.1.6-4.6 4.1 1.4 6-5.5-3.2-5.5 3.2 1.4-6-4.6-4.1 6.1-.6Z" fill="currentColor"/>',
+};
+
+function icon(name, extraClass){
+  const inner = ICON_PATHS[name] || "";
+  const cls = extraClass ? ` class="${extraClass}"` : "";
+  return `<svg${cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ` +
+    `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+}
+
 const EMPTY_COPY = {
   inbox: ["Tu cabeza está libre por ahora",
-    "Cuando recuerdes algo, escríbelo arriba. No tienes que organizarlo todavía.", "ti-notes"],
+    "Cuando recuerdes algo, escríbelo arriba. No tienes que organizarlo todavía.", "notes"],
   today: ["Todavía no elegiste tus prioridades",
-    "Selecciona hasta cinco tareas que realmente quieras terminar hoy.", "ti-target"],
+    "Selecciona hasta cinco tareas que realmente quieras terminar hoy.", "target"],
   upcoming: ["Nada agendado todavía",
-    "Cuando le pongas fecha a una tarea, aparecerá aquí.", "ti-calendar"],
+    "Cuando le pongas fecha a una tarea, aparecerá aquí.", "calendar"],
   completed: ["Aún no completas nada",
-    "Lo que termines va a ir quedando aquí.", "ti-checks"],
+    "Lo que termines va a ir quedando aquí.", "checks"],
 };
 const VIEW_LABELS = {inbox: "Inbox", today: "Hoy", upcoming: "Próximas", completed: "Completadas"};
 
@@ -308,7 +337,7 @@ function renderMain(){
     return;
   }
   if(!hasData && loadError){
-    main.innerHTML = `<div class="empty"><i class="ti ti-plug-connected-x icon" aria-hidden="true"></i>
+    main.innerHTML = `<div class="empty">${icon("alert", "icon")}
       <h3>No pudimos conectar con Nova</h3>
       <p>Revisa tu conexión e intenta de nuevo.</p></div>`;
     return;
@@ -360,11 +389,10 @@ function buildSection(key, items){
 }
 
 function emptyState(key){
-  const [title, text, icon] = EMPTY_COPY[key];
+  const [title, text, iconName] = EMPTY_COPY[key];
   const div = document.createElement("div");
   div.className = "empty";
-  div.innerHTML = `<i class="ti ${icon} icon" aria-hidden="true"></i>
-    <h3>${title}</h3><p>${text}</p>`;
+  div.innerHTML = `${icon(iconName, "icon")}<h3>${title}</h3><p>${text}</p>`;
   return div;
 }
 
@@ -395,7 +423,7 @@ function renderTask(it, view){
   star.setAttribute("aria-pressed", it.important ? "true" : "false");
   star.setAttribute("aria-label", it.important ? "Quitar de importantes" : "Marcar como importante");
   star.title = star.getAttribute("aria-label");
-  star.innerHTML = `<i class="ti ${it.important ? "ti-star-filled" : "ti-star"}" aria-hidden="true"></i>`;
+  star.innerHTML = icon(it.important ? "starFilled" : "star");
   star.addEventListener("click", () => toggleImportant(it.id));
 
   const body = document.createElement("div");
@@ -414,7 +442,7 @@ function renderTask(it, view){
     const tag = document.createElement("span");
     const cls = it.due_label === "vencida" ? " overdue" : (it.urgent ? " urgent" : "");
     tag.className = "tag" + cls;
-    tag.innerHTML = `<i class="ti ti-calendar" aria-hidden="true"></i>${it.due_label}`;
+    tag.innerHTML = `${icon("calendar")}${it.due_label}`;
     body.appendChild(tag);
   }
 
@@ -449,32 +477,32 @@ function buildActions(it, view){
   const wrap = document.createElement("div");
   wrap.className = "actions";
 
-  wrap.appendChild(actionButton("ti-pencil", "Editar tarea", () => startEdit(it)));
+  wrap.appendChild(actionButton("pencil", "Editar tarea", () => startEdit(it)));
 
   if(!it.done){
     if(it.today){
-      wrap.appendChild(actionButton("ti-flag-off", "Quitar de Hoy", () => toggleToday(it.id)));
+      wrap.appendChild(actionButton("flagOff", "Quitar de Hoy", () => toggleToday(it.id)));
     }else{
-      wrap.appendChild(actionButton("ti-flag", "Mover a Hoy", () => toggleToday(it.id)));
+      wrap.appendChild(actionButton("flag", "Mover a Hoy", () => toggleToday(it.id)));
     }
-    wrap.appendChild(actionButton("ti-calendar", it.due ? "Quitar fecha" : "Poner fecha: mañana",
+    wrap.appendChild(actionButton("calendar", it.due ? "Quitar fecha" : "Poner fecha: mañana",
       () => cycleDate(it)));
   }
 
-  const del = actionButton("ti-trash", "Eliminar tarea", () => removeItem(it));
+  const del = actionButton("trash", "Eliminar tarea", () => removeItem(it));
   del.classList.add("danger");
   wrap.appendChild(del);
 
   return wrap;
 }
 
-function actionButton(icon, label, handler){
+function actionButton(iconName, label, handler){
   const b = document.createElement("button");
   b.type = "button";
   b.className = "icon-btn act";
   b.setAttribute("aria-label", label);
   b.title = label;
-  b.innerHTML = `<i class="ti ${icon}" aria-hidden="true"></i>`;
+  b.innerHTML = icon(iconName);
   b.addEventListener("click", handler);
   return b;
 }

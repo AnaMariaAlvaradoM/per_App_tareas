@@ -306,6 +306,16 @@ async def service_worker():
     return FileResponse("sw.js", media_type="application/javascript")
 
 
+@app.get("/favicon.ico")
+async def favicon():
+    # El navegador la pide solo por costumbre; sin esta ruta queda un 404
+    # inofensivo pero ruidoso en la consola. Reusa el ícono de la PWA.
+    path = "static/icons/icon-192.png"
+    if os.path.isfile(path):
+        return FileResponse(path, media_type="image/png")
+    return JSONResponse({"error": "no favicon"}, status_code=404)
+
+
 @app.get("/health")
 async def health():
     return {"ok": True}
