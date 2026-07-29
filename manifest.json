@@ -1,0 +1,33 @@
+{
+  "name": "Nova — vacía tu cabeza",
+  "short_name": "Nova",
+  "description": "Escribe lo que traes en la cabeza y guárdalo en segundos.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#17151a",
+  "theme_color": "#17151a",
+  "orientation": "portrait",
+  "lang": "es",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
