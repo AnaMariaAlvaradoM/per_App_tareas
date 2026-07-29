@@ -4,7 +4,7 @@
 // así que /api/* nunca se cachea: mejor mostrar el estado de error de la app
 // que datos viejos disfrazados de reales.
 
-const CACHE = "nova-shell-v1";
+const CACHE = "nova-shell-v2"; // subir este número invalida cualquier caché vieja al desplegar
 const SHELL = ["/", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
